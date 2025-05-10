@@ -1,0 +1,14 @@
+[project]
+name = "expense-tracker-ai-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.15.2",
+    "fastapi[standart]>=0.115.12",
+    "granian>=2.2.6",
+    "pydantic>=2.11.4",
+    "pymysql>=1.1.1",
+    "sqlalchemy>=2.0.40",
+]
