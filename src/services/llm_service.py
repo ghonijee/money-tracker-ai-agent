@@ -19,8 +19,14 @@ class LLMService:
     
     def query_execute(self, messages: Iterable[ChatCompletionMessageParam]):
         completion = self.client.chat.completions.create(
-            model="deepseek/deepseek-chat-v3-0324:free",
-            messages=messages
+            model="meta-llama/llama-4-maverick:free",
+            messages=messages,
+            stop=['Observation:']
         )
 
+        if(completion.choices is None):
+            # throw an error
+            print(completion)
+            return completion.error.message
+    
         return completion.choices[0].message.content

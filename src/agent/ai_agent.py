@@ -5,7 +5,10 @@ import ast
 import json
 from fastapi import Depends
 
+from src.agent.tools.category_tools import GetListCategoryTool
+from src.agent.tools.common_tools import GetDateTool
 from src.agent.tools.greet import GreetTool
+from src.agent.tools.transaction_tools import CreateTransactionTool
 from src.services.llm_service import LLMService, get_llm_service
 
 def get_agent(llm_service: LLMService = Depends(get_llm_service)):
@@ -16,62 +19,103 @@ def get_agent(llm_service: LLMService = Depends(get_llm_service)):
 class Agent:
     def __init__(self, llm_service: LLMService = Depends(get_llm_service)) -> None:
         self.tools = []
+        self.messages = []
         self.memory = []
-        self.max_memory = 5
+        self.max_memory = 10
         self.llm_service = llm_service
+        self.initialize_tools()
+        self.initialize_prompt()
+    def initialize_tools(self):
+        self.add_tool(GreetTool())
+        self.add_tool(GetDateTool())
+        self.add_tool(GetListCategoryTool())
+        self.add_tool(CreateTransactionTool())
+    def initialize_prompt(self):
+        tools_description = "\n".join([f"{tool.name()}: {tool.description()} Args: {tool.get_args_schema()} Output: {tool.output_schema()}" for tool in self.tools])
+
+        self.prompt = f"""
+        You are a helpful assistant designed to help users effectively and accurately. Your primary goal is to provide helpfull, precise, and clear information to users. 
+        
+        You have access to the following tools:
+        {tools_description}
+
+        The way you use the tools is by specifying a json. This example is a valid json that uses the tool 'greet':
+        {{"action": "greet", "args": ""}}
+
+        You should think step by step in order to fulfill the objective with reasoing divide into Thought, Action, and Observation.
+        You should always use the following format:
+
+        Question: the input question you must answer
+        Thought: you should always think about one action to take. Only one action at a time in this format:
+        Action: 
+
+        $JSON (This is the JSON that contains the action and arguments)
+
+        Observation: the result of the action. This Observation is unique, complete, and the source of truth.  
+
+        ... (this Thought/Action/Observation can repeat N times, you should take several steps when needed)
+
+        If you have the answer, you must always response with the following format:
+
+        Thought: I now know the final answer
+        Final Answer: The final answer to the user's input. 
+
+        Begin! Reminder to always use the exact characters `Final Answer: ` when you provide the final answer.
+        """
+        self.messages.append({"role": "system", "content": self.prompt})
+        self.add_memory(f"System: {self.prompt}")
 
     def add_tool(self, tool):
         self.tools.append(tool)
 
-    def process_input(self, input):
-        self.memory.append(
-            f"User: {input}"
-        )
+    def add_memory(self, memory):
+        self.memory.append(memory)
         self.memory = self.memory[-self.max_memory:]
 
-        context = "\n".join(self.memory)
-        tools_description = "\n".join([f"{tool.name()}: {tool.description()}" for tool in self.tools])
-        response_format = {"action":"", "args":""}
+    def process_input(self, input):
+        self.add_memory(f"User: {input}")
+        self.messages.append({"role": "user", "content": input})
 
-        prompt = f"""
-        You are a helpful assistant. Answer the following question using the context provided. 
-        Context: {context}
+        response = self.llm_service.query_execute(self.messages)
+        return response or ""
+    
+    def run(self, input):
+        query = input
+        maxIterarion= 5
+        while maxIterarion > 0:
+            response = self.process_input(query)
 
-        You have access to the following tools:
-        {tools_description}
+            print(response)
+            if "Final Answer:" in response:
 
-        Based on the user's input and context, decide if you should use a tool or respond directly.
-        Sometimes you might have to use multiple tools to solve user's input. You have to do that in a loop.
-        If you identify a action, respond with the tool name and the arguments for the tool.
-        If you decide to respond directly to the user then make the action "respond_to_user" with args as your response in the following format. 
-        Response format: 
-        {response_format}
+                return response.split("Final Answer:")[1].strip()
 
-        Only respond with the JSON format and nothing else. Do not add any other text or indentation causing the JSON to be invalid.
-        """
-        
-        response = self.llm_service.query_execute([
-            {"role": "user", "content": prompt},
-        ])
+            if "Action:" in response:
+                json_blob = response.split("Action:")[1]
+                json_dict = self.json_parser(json_blob)
+                # # get the action name from the dictionary
+                action_name = json_dict["action"]
+                # # get the arguments from the dictionary
+                action_args = json_dict["args"]
 
-        print(response)
-        response_dict = self.json_parser(response)
-
-        for tool in self.tools:
-            if tool.name().lower() in response_dict["action"].lower():
-                return tool.run(response_dict["args"])
-        return response_dict['args']
-
+                # check if the action is a tool
+                for tool in self.tools:
+                    if tool.name().lower() == action_name.lower():
+                        result = tool.run(action_args)
+                        # append result tool to response
+                        response += "Observation: " + result
+                        self.add_memory(f"Assistant: {response}")
+                        self.messages.append({"role": "assistant", "content": response})
+                        query = response
+                        break         
+                
+            maxIterarion -= 1
     def json_parser(self, input_string):
         try:
             python_dict = ast.literal_eval(input_string)
             json_string = json.dumps(python_dict)
             json_dict = json.loads(json_string)
-            
-            if isinstance(json_dict, dict):
-                return json_dict   
-            else:
-                return {"action": 'respond_to_user', "args": json_dict['args']}
+            return json_dict
         except:
-            return {"action": 'respond_to_user', "args": input_string}
+            raise Exception("Invalid JSON")
     

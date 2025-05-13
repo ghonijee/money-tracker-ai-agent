@@ -14,6 +14,5 @@ class MessageRequest(BaseModel):
 
 @router.post("/message")
 def incoming_message(payload: MessageRequest, agent: Agent = Depends(get_agent)):
-    message = f"Hello {payload.phone_number}, your message is {payload.message}"
-    response = agent.process_input(payload.message)
+    response = agent.run(payload.message)
     return {"message": response}

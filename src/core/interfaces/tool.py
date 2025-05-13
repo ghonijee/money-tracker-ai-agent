@@ -12,3 +12,11 @@ class Tool:
     @abstractmethod
     def run(self, *args, **kwargs):
         pass
+
+    @abstractmethod 
+    def get_args_schema(self):
+        pass
+    
+    @abstractmethod
+    def output_schema(self):
+        pass
