@@ -3,6 +3,7 @@
 
 import ast
 import json
+import re
 from fastapi import Depends
 
 from src.agent.tools.category_tools import GetListCategoryTool
@@ -45,17 +46,15 @@ class Agent:
         The way you use the tools is by specifying a json. This example is a valid json that uses the tool 'greet':
         {{"action": "greet", "args": {{}}}}
 
-        You must call tools get_user_id to get the user_id for the transaction.
+        You must call the `get_user_id` tool to retrieve the user ID for the transaction, and do so only once.
+        You must call the `generate_date` tool only once to retrieve the date for the transaction, when the date is not fully defined in the input.
 
         You should think step by step in order to fulfill the objective with reasoing divide into Thought, Action, and Observation.
         You should always use the following format:
 
         Question: the input question you must answer
         Thought: you should always think about one action to take. Only one action at a time in this format:
-        Action: 
-
-        $JSON (This is the JSON that contains the action and arguments, only JSON without markdown)
-
+        Action: $JSON (This is the JSON that contains the action and arguments, only JSON without markdown)
         Observation: the result of the action. This Observation is unique, complete, and the source of truth.  
 
         ... (this Thought/Action/Observation can repeat N times, you should take several steps when needed)
@@ -80,7 +79,6 @@ class Agent:
     def process_input(self, input):
         self.add_memory(f"User: {input}")
         self.messages.append({"role": "user", "content": input})
-
         response = self.llm_service.query_execute(self.messages)
         return response or ""
 
@@ -90,16 +88,16 @@ class Agent:
         self.initialize_prompt()
 
         query = input
-        maxIterarion= 5
+        maxIterarion= 10
 
         while maxIterarion > 0:
             response = self.process_input(query)
-
-            print(response)
+            
             if "Final Answer:" in response:
+                print(self.memory)
+                print(self.messages)
                 return response.split("Final Answer:")[1].strip()
-
-            if "Action:" in response:
+            elif "Action:" in response:
                 json_blob = response.split("Action:")[1]
                 json_dict = self.json_parser(json_blob)
                 # # get the action name from the dictionary
@@ -115,12 +113,16 @@ class Agent:
                     if tool.name().lower() == action_name.lower():
                         result = tool.run(action_args)
                         # append result tool to response
-                        response += "Observation: " + result
+                        response += " Observation: " + result
+                       
                         self.add_memory(f"Assistant: {response}")
-                        self.messages.append({"role": "assistant", "content": response})
                         query = response
-                        break         
-                
+                        break 
+                # remove action from context
+                # query = re.sub(r'Action:.*?(?=Observation:)', '', response, flags=re.DOTALL)
+            else:
+                print(response)
+
             maxIterarion -= 1
     def json_parser(self, input_string):
         try:

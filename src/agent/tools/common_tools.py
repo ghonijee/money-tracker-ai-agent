@@ -1,7 +1,7 @@
 
 
 import base64
-from datetime import datetime
+from datetime import datetime, UTC
 import hashlib
 import hmac
 import os
@@ -28,12 +28,12 @@ class GetDateTool(Tool):
         ref_ts = datetime.now().isoformat()
         expression = args["expression"]
         timezone = args["timezone"] or tz.utc
-       
 
         system_prompt = (
-            "You are a precise date/time parser. "
-            "Given a natural-language expression and a reference timestamp + timezone, "
-            "output ONLY valid JSON like {\"datetime\": \"YYYY-MM-DDTHH:MM:SS±HH:MM\"}."
+            "You are a precise date/time parser."
+            "Given a natural-language expression and a reference timestamp + timezone"
+            "always output ONLY valid JSON with format {\"datetime\": \"YYYY-MM-DDTHH:MM:SS±HH:MM\"}."
+            "don't output anything else."
         )
         user_prompt = (
             f"Expression: \"{expression}\"\n"
@@ -49,6 +49,7 @@ class GetDateTool(Tool):
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": user_prompt}
             ],
+            max_token=200
         )
 
         return resp

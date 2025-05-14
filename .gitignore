@@ -3,7 +3,9 @@ alembic.ini
 **/__pycache__/
 __pycache__/
 **/*.py[cod]
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
 .venv/
 .pytest_cache/
 **

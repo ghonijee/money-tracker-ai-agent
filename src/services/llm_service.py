@@ -17,14 +17,16 @@ class LLMService:
             base_url="https://openrouter.ai/api/v1",
         )
     
-    def query_execute(self, messages: Iterable[ChatCompletionMessageParam]):
+    def query_execute(self, messages: Iterable[ChatCompletionMessageParam], max_token: int = 500):
         completion = self.client.chat.completions.create(
             extra_headers={
                 "X-Title": "Expense Tracker AI Agent",
+                "HTTP-Referer": "https://github.com/ghonijee/money-tracker-ai-agent",
             },  
             model="meta-llama/llama-4-maverick:free",
             messages=messages,
-            stop=['Observation:']
+            stop=['Observation:'],
+            max_tokens=max_token
         )
 
         if(completion.choices is None):
