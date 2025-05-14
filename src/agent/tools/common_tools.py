@@ -1,10 +1,19 @@
 
 
+import base64
 from datetime import datetime
+import hashlib
+import hmac
+import os
+
+from dotenv import load_dotenv
 from src.core.interfaces.tool import Tool
 from datetime import timezone as tz
 
 from src.services.llm_service import get_llm_service
+from cryptography.fernet import Fernet
+
+load_dotenv()
 
 class GetDateTool(Tool):
     def name(self) -> str:
@@ -13,15 +22,13 @@ class GetDateTool(Tool):
     def description(self) -> str:
         return (
             "Convert a natural-language date/time expression into an exact ISO-8601 date or datetime. "
-            "If no reference is provided, it will assume “now”."
         )
     
     def run(self, args):
-        # 1) Build context
-        ref_ts = args["reference"] or datetime.now ().isoformat()
+        ref_ts = datetime.now().isoformat()
         expression = args["expression"]
         timezone = args["timezone"] or tz.utc
-        format = args["format"] or "%Y-%m-%dT%H:%M:%S%z"
+       
 
         system_prompt = (
             "You are a precise date/time parser. "
@@ -30,7 +37,7 @@ class GetDateTool(Tool):
         )
         user_prompt = (
             f"Expression: \"{expression}\"\n"
-            f"Reference Timestamp: \"{ref_ts}\"\n"
+            f"Reference Current Timestamp: \"{ref_ts}\"\n"
             f"Timezone: \"{timezone}\"\n"
             "Return the exact ISO-8601 date/time in the following format: {format}"
         )
@@ -47,11 +54,43 @@ class GetDateTool(Tool):
         return resp
     def get_args_schema(self):
         return [
-            {"name": "expression", "type": "str", "description": "Natural-language date/time expression"},
-            {"name": "reference", "type": "str", "description": "Reference date/time, Defaults to now in local timezone."},
-            {"name": "timezone", "type": "str", "description": "Timezone of the output date/time, Optional IANA timezone (e.g. 'Asia/Jakarta')."},
-            {"name": "format", "type": "str", "description": "Format of the output date/time"}
+            {"name": "expression", "type": "str", "description": "Natural-language date/time expression", "status": "required"},
+            {"name": "timezone", "type": "str", "description": "Timezone of the output date/time, Optional IANA timezone (e.g. 'Asia/Jakarta').", "status": "required"},
         ]
     
     def output_schema(self):
         return "str"
+    
+
+class GetUserIdTool(Tool):
+    def __init__(self, user_id) -> None:
+        self.id = user_id
+    def name(self) -> str:
+        return "get_user_id"
+    
+    def description(self) -> str:
+        return "Get user ID from the encrypted user ID"
+    
+    def run(self, args): 
+        return self.create_encrypted_user_id(self.id)
+
+    def output_schema(self):
+        return "str"
+    def create_encrypted_user_id(self, user_id):
+        secret_key = os.getenv("SECRET_KEY")
+        if not secret_key:
+            raise RuntimeError("Set MY_SECRET_KEY to your Fernet key!")
+        digest = hmac.new(secret_key.encode(), user_id.encode(), digestmod=hashlib.sha256).hexdigest()
+        return digest
+    
+    # def create_encrypted_user_id(self, user_id):
+    #     # encrypt user_id with a key from env SECRET_KEY
+    #     secret_key = os.getenv("SECRET_KEY")
+    #     if not secret_key:
+    #         raise RuntimeError("Set MY_SECRET_KEY to your Fernet key!")
+        
+    #     fernet = Fernet(secret_key.encode())
+    #     encrypted_user_id = fernet.encrypt(user_id.encode()).decode()
+    #     return encrypted_user_id
+       
+        

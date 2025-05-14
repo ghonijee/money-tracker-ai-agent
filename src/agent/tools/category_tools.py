@@ -9,7 +9,7 @@ class GetListCategoryTool(Tool):
         return "get_list_category"
     
     def description(self) -> str:
-        return "Get list of category for expense classification"
+        return "Get list of category for expense/income classification"
     
     def run(self, args) -> str:
         cartegories = [
@@ -22,7 +22,18 @@ class GetListCategoryTool(Tool):
             "Entertainment",
             "Shopping",
             "Medical",
-            "Other"
+            "Other",
+            "Transfer",
+            "Salary",
+            "Taxes",
+            "Insurance",
+            "Debt",
+            "Savings",
+            "Investment",
+            "Gifts",
+            "Education",
+            "Charity",
+            "Credit Card",
         ]
         # join the list of categories with a comma
         return ", ".join(cartegories)

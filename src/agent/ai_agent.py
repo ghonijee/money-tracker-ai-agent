@@ -6,10 +6,11 @@ import json
 from fastapi import Depends
 
 from src.agent.tools.category_tools import GetListCategoryTool
-from src.agent.tools.common_tools import GetDateTool
+from src.agent.tools.common_tools import GetDateTool, GetUserIdTool
 from src.agent.tools.greet import GreetTool
 from src.agent.tools.transaction_tools import CreateTransactionTool
 from src.services.llm_service import LLMService, get_llm_service
+
 
 def get_agent(llm_service: LLMService = Depends(get_llm_service)):
     agent = Agent(llm_service)
@@ -18,18 +19,20 @@ def get_agent(llm_service: LLMService = Depends(get_llm_service)):
 
 class Agent:
     def __init__(self, llm_service: LLMService = Depends(get_llm_service)) -> None:
+        self.user_id = "";
         self.tools = []
         self.messages = []
         self.memory = []
         self.max_memory = 10
         self.llm_service = llm_service
         self.initialize_tools()
-        self.initialize_prompt()
+
     def initialize_tools(self):
         self.add_tool(GreetTool())
         self.add_tool(GetDateTool())
         self.add_tool(GetListCategoryTool())
         self.add_tool(CreateTransactionTool())
+
     def initialize_prompt(self):
         tools_description = "\n".join([f"{tool.name()}: {tool.description()} Args: {tool.get_args_schema()} Output: {tool.output_schema()}" for tool in self.tools])
 
@@ -40,7 +43,9 @@ class Agent:
         {tools_description}
 
         The way you use the tools is by specifying a json. This example is a valid json that uses the tool 'greet':
-        {{"action": "greet", "args": ""}}
+        {{"action": "greet", "args": {{}}}}
+
+        You must call tools get_user_id to get the user_id for the transaction.
 
         You should think step by step in order to fulfill the objective with reasoing divide into Thought, Action, and Observation.
         You should always use the following format:
@@ -49,7 +54,7 @@ class Agent:
         Thought: you should always think about one action to take. Only one action at a time in this format:
         Action: 
 
-        $JSON (This is the JSON that contains the action and arguments)
+        $JSON (This is the JSON that contains the action and arguments, only JSON without markdown)
 
         Observation: the result of the action. This Observation is unique, complete, and the source of truth.  
 
@@ -78,16 +83,20 @@ class Agent:
 
         response = self.llm_service.query_execute(self.messages)
         return response or ""
+
     
-    def run(self, input):
+    def run(self, input, user_id):
+        self.add_tool(GetUserIdTool(user_id))
+        self.initialize_prompt()
+
         query = input
         maxIterarion= 5
+
         while maxIterarion > 0:
             response = self.process_input(query)
 
             print(response)
             if "Final Answer:" in response:
-
                 return response.split("Final Answer:")[1].strip()
 
             if "Action:" in response:
@@ -96,7 +105,10 @@ class Agent:
                 # # get the action name from the dictionary
                 action_name = json_dict["action"]
                 # # get the arguments from the dictionary
-                action_args = json_dict["args"]
+                if(json_dict["args"] == ""):
+                    action_args = {}
+                else:
+                    action_args = json_dict["args"]
 
                 # check if the action is a tool
                 for tool in self.tools:

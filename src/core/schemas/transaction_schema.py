@@ -7,3 +7,11 @@ class CreateTransactionSchema:
     description: str
     category: str
     type: TransactionType
+
+    def __init__(self, user_id, date, amount, description, category, type):
+        self.user_id = user_id
+        self.date = date
+        self.amount = amount
+        self.description = description
+        self.category = category
+        self.type = type
