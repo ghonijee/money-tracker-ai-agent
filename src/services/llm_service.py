@@ -19,6 +19,9 @@ class LLMService:
     
     def query_execute(self, messages: Iterable[ChatCompletionMessageParam]):
         completion = self.client.chat.completions.create(
+            extra_headers={
+                "X-Title": "Expense Tracker AI Agent",
+            },  
             model="meta-llama/llama-4-maverick:free",
             messages=messages,
             stop=['Observation:']
