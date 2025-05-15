@@ -80,7 +80,7 @@ class GetUserIdTool(Tool):
     def create_encrypted_user_id(self, user_id):
         secret_key = os.getenv("SECRET_KEY")
         if not secret_key:
-            raise RuntimeError("Set MY_SECRET_KEY to your Fernet key!")
+            raise RuntimeError("Set SECRET_KEY for encryption!")
         digest = hmac.new(secret_key.encode(), user_id.encode(), digestmod=hashlib.sha256).hexdigest()
         return digest
     

@@ -1,7 +1,8 @@
 
 
+from sqlalchemy import text
 from src.core.models.transaction_model import TransactionModel
-from src.core.schemas.transaction_schema import CreateTransactionSchema
+from src.core.schemas.transaction_schema import CreateTransactionSchema, UpdateTransactionSchema
 from src.database.connection import SessionLocal
 
 def get_transaction_repository():
@@ -28,3 +29,33 @@ class TransactionRepository:
 
     def get_all(self):
         return self.session.query(TransactionModel).all()
+    
+    def update(self, data: UpdateTransactionSchema) -> TransactionModel:
+        transaction = self.session.query(TransactionModel).filter_by(id=data.id).first()
+        if transaction:
+            transaction.user_id = data.user_id
+            transaction.date = data.date
+            transaction.amount = data.amount
+            transaction.description = data.description
+            transaction.category = data.category
+            transaction.type = data.type
+            self.session.commit()
+            self.session.refresh(transaction)
+            return transaction
+        else:
+            raise Exception("Transaction not found")
+    
+    def delete(self, id):
+        transaction = self.session.query(TransactionModel).filter_by(id=id).first()
+        if transaction:
+            self.session.delete(transaction)
+            self.session.commit()
+            return transaction
+        else:
+            raise Exception("Transaction not found")
+        
+    def findRaw(self, query):
+        stmt = text(query)
+        return self.session.execute(stmt).all()
+    
+        
