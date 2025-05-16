@@ -5,6 +5,7 @@
 from src.core.interfaces.tool import Tool
 from src.core.schemas.transaction_schema import CreateTransactionSchema, UpdateTransactionSchema
 from src.repositories.transaction_repository import get_transaction_repository
+from src.services.llm_service import get_llm_service
 
 class CreateTransactionTool(Tool):
     def __init__(self) -> None:
@@ -62,6 +63,64 @@ class FindTransactionRawSQLTool(Tool):
     def get_args_schema(self):
         return [
             {"name": "query", "type": "string", "description": "Raw SQL query"}
+        ]
+    
+    def output_schema(self):
+        return "str"
+    
+class FindTransactionTool(Tool):
+    def __init__(self) -> None:
+        self.repository = get_transaction_repository()
+
+    def name(self) -> str:
+        return "find_transaction"
+    
+    def description(self) -> str:
+        return (
+            "Find or Get data from the database by natural-language query from user input"
+        )
+    
+    def run(self, args):
+        query = args["query"]
+
+        system_prompt = (
+            "You are a precise transaction finder. You must return only string the RAW SQL query."
+            "Given RAW SQL query to solve the natural-language query from user input"
+            """
+            You have knowledge about DDL the database: 
+            TABLE `transaction` (
+                `id` int NOT NULL AUTO_INCREMENT,
+                `user_id` varchar(255) NOT NULL,
+                `date` datetime NOT NULL,
+                `amount` float NOT NULL,
+                `description` varchar(255) DEFAULT NULL,
+                `category` varchar(100) DEFAULT NULL,
+                `type` enum('expense','income') DEFAULT NULL,
+                PRIMARY KEY (`id`)
+            )
+            """
+            """
+            Example: 
+            "SELECT * FROM transaction WHERE user_id = '123' AND date = '2023-01-01'"
+            "Select * from transaction where user_id = '123' order by amount desc limit 1"
+            "select * from transaction where user_id = '123' and description like '%food%' order by date desc"
+            """
+            "Return only string the RAW SQL query without any other text or formatting"
+        )
+
+        # 2) Call the LLM
+        llm_service = get_llm_service()
+        resp = llm_service.query_execute(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": query}
+            ],
+        )
+        transactions = self.repository.findRaw(resp)
+        return f"{transactions}"
+    def get_args_schema(self):
+        return [
+            {"name": "query", "type": "string", "description": "Natural-language query"}
         ]
     
     def output_schema(self):

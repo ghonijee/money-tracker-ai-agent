@@ -9,7 +9,7 @@ from fastapi import Depends
 from src.agent.tools.category_tools import GetListCategoryTool
 from src.agent.tools.common_tools import GetDateTool, GetUserIdTool
 from src.agent.tools.greet import GreetTool
-from src.agent.tools.transaction_tools import CreateTransactionTool, DeleteTransactionTool, FindTransactionRawSQLTool, UpdateTransactionTool
+from src.agent.tools.transaction_tools import CreateTransactionTool, DeleteTransactionTool, FindTransactionRawSQLTool, FindTransactionTool, UpdateTransactionTool
 from src.services.llm_service import LLMService, get_llm_service
 
 
@@ -29,11 +29,11 @@ class Agent:
         self.initialize_tools()
 
     def initialize_tools(self):
-        self.add_tool(GreetTool())
+        # self.add_tool(GreetTool())
         self.add_tool(GetDateTool())
         self.add_tool(GetListCategoryTool())
         self.add_tool(CreateTransactionTool())
-        self.add_tool(FindTransactionRawSQLTool())
+        self.add_tool(FindTransactionTool())
         self.add_tool(UpdateTransactionTool())
         self.add_tool(DeleteTransactionTool())
 
@@ -51,18 +51,6 @@ class Agent:
         You must call the `get_user_id` tool to retrieve the user ID for the transaction, and do so only once.
         You must call the `generate_date` tool only once to retrieve the date for the transaction, when the date is not fully defined in the input.
 
-        You have knowledge about DDL the database: 
-        TABLE `transaction` (
-            `id` int NOT NULL AUTO_INCREMENT,
-            `user_id` varchar(255) NOT NULL,
-            `date` datetime NOT NULL,
-            `amount` float NOT NULL,
-            `description` varchar(255) DEFAULT NULL,
-            `category` varchar(100) DEFAULT NULL,
-            `type` enum('expense','income') DEFAULT NULL,
-            PRIMARY KEY (`id`)
-        )
-
         You should think step by step in order to fulfill the objective with reasoing divide into Thought, Action, and Observation.
         You should always use the following format:
 
@@ -76,8 +64,9 @@ class Agent:
         If you have the answer, you must always response with the following format:
 
         Thought: I now know the final answer
-        Final Answer: The final answer to the user's input. answer using friendly and concise style. give the refID (ID) on bottom line if user want to see the transaction details.
-
+        Final Answer: The final answer to the user's input. give the refID (ID) if user want to see the transaction details. 
+        
+        Analyze, summarize the answer and give the final answer using friendly and concise style.
         Begin! Reminder to always use the exact characters `Final Answer: ` when you provide the final answer.
         """
         self.messages.append({"role": "system", "content": self.prompt})
@@ -93,7 +82,7 @@ class Agent:
     def process_input(self, input):
         self.add_memory(f"User: {input}")
         self.messages.append({"role": "user", "content": input})
-        response = self.llm_service.query_execute(self.messages)
+        response = self.llm_service.query_execute(self.messages, stop=["Observation:"])
         return response or ""
 
     

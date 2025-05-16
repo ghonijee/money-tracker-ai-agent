@@ -1,6 +1,6 @@
 import os
-from typing import Iterable
-from openai import OpenAI
+from typing import Iterable, List, Optional, Union
+from openai import NOT_GIVEN, NotGiven, OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
 
@@ -17,7 +17,7 @@ class LLMService:
             base_url="https://openrouter.ai/api/v1",
         )
     
-    def query_execute(self, messages: Iterable[ChatCompletionMessageParam], max_token: int = 500):
+    def query_execute(self, messages: Iterable[ChatCompletionMessageParam], max_token: int = 500, stop: Union[Optional[str], List[str], None] | NotGiven = NOT_GIVEN):
         completion = self.client.chat.completions.create(
             extra_headers={
                 "X-Title": "Expense Tracker AI Agent",
@@ -25,7 +25,7 @@ class LLMService:
             },  
             model="meta-llama/llama-4-maverick:free",
             messages=messages,
-            stop=['Observation:'],
+            stop=stop,
             max_tokens=max_token
         )
 
