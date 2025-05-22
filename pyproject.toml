@@ -10,15 +10,30 @@ dependencies = [
     "cryptography>=44.0.3",
     "fastapi[standard,standart]>=0.115.12",
     "granian>=2.2.6",
+    "heyoo>=0.1.2",
     "openai>=1.78.0",
     "pydantic>=2.11.4",
     "pymysql>=1.1.1",
     "pytest>=8.3.5",
     "python-dotenv>=1.1.0",
+    "pywa>=2.10.0",
     "sqlalchemy>=2.0.40",
 ]
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.10",
+]
+
+[tool.ruff]
+line-length = 200
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+docstring-code-format = true
 
