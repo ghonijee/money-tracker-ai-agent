@@ -23,7 +23,7 @@ class LLMService:
 				"X-Title": "Expense Tracker AI Agent",
 				"HTTP-Referer": "https://github.com/ghonijee/money-tracker-ai-agent",
 			},
-			model="meta-llama/llama-4-maverick:free",
+			model="meta-llama/llama-3.3-70b-instruct:free",
 			messages=messages,
 			stop=stop,
 			max_tokens=max_token,

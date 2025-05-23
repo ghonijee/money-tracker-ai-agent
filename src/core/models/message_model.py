@@ -50,4 +50,10 @@ class MessageModel:
 		Convert the MessageModel to a context string.
 		:return: A string representation of the MessageModel in context format.
 		"""
-		return f"Message Type: {self.message_type}\nMessage Content: {self.message_content}\nImage URL: {self.image_public_url}\nImage File Path: {self.image_file_path}\nSource: {self.source}"
+		return f"""
+		Message Type: {self.message_type} 
+		Message Content: {self.message_content} 
+		Image URL: {self.image_public_url} 
+		Image File Path: {self.image_file_path} 
+		Source: {self.source}
+		"""
