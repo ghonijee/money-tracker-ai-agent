@@ -14,21 +14,55 @@ class CreateTransactionTool(Tool):
 	def description(self) -> str:
 		return "Create a new transaction data"
 
-	def run(self, args):
-		createData = CreateTransactionSchema(user_id=args["user_id"], date=args["date"], amount=args["amount"], description=args["description"], category=args["category"], type=args["type"])
-		transaction = self.repository.create(createData)
-		# return string with category, amount, and ref transaction ID
-		return f"{transaction.type} record successfully created with ID {transaction.id} for {transaction.amount} amount and {transaction.category} category"
+	def run(self, args: list):
+		createData = []
+		# check if args is list
+		if not isinstance(args, list):
+			return "Args should be a list"
+
+		if len(args) == 0:
+			return "Args list cannot be empty"
+
+		for arg in args:
+			createData.append(CreateTransactionSchema(user_id=arg["user_id"], date=arg["date"], amount=arg["amount"], description=arg["description"], category=arg["category"], type=arg["type"]))
+
+		transactions = self.repository.create(createData)
+		return {
+			"message": f"{len(transactions)} record(s) successfully created",
+			"transactions": createData,
+		}
 
 	def get_args_schema(self):
-		return [
-			{"name": "user_id", "type": "str", "description": "User ID"},
-			{"name": "date", "type": "date", "description": "Date of the transaction"},
-			{"name": "amount", "type": "int", "description": "Amount of the transaction"},
-			{"name": "description", "type": "str", "description": "Description of the transaction"},
-			{"name": "category", "type": "str", "description": "Category of the transaction"},
-			{"name": "type", "type": "enum(expense, income)", "description": "Type of the transaction"},
+		return """
+		Args: Accepts list of objects to create one or multiple transactions.
+		List of objects example:
+		[
+			{
+				"user_id": "string",
+				"date": "YYYY-MM-DD",
+				"amount": 1000,
+				"description": "Description of the transaction",
+				"category": "Category of the transaction",
+				"type": "expense"
+			},
+			{
+				"user_id": "string",
+				"date": "YYYY-MM-DD",
+				"amount": 500,
+				"description": "Another transaction",
+				"category": "Another category",
+				"type": "income"
+			}
 		]
+
+		Each object must include:
+		- user_id (str): User ID
+		- date (date): Date of the transaction
+		- amount (int): Amount of the transaction
+		- description (str): Description of the transaction
+		- category (str): Category of the transaction
+		- type (enum: expense, income): Type of the transaction
+		"""
 
 	def output_schema(self):
 		return "str"

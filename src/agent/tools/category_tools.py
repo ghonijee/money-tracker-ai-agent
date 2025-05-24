@@ -6,7 +6,7 @@ class GetListCategoryTool(Tool):
 		return "get_list_category"
 
 	def description(self) -> str:
-		return "Get list of category for expense/income classification, always use this tool to categorize the transaction."
+		return "Get list of category for expense/income classification, ALWASYS use this tool to get the list of categories. This is a static list and will not change. The list is used to classify the transactions into different categories"
 
 	def run(self, args) -> str:
 		cartegories = [

@@ -1,4 +1,4 @@
-from sqlalchemy import text
+from sqlalchemy import insert, text
 from src.core.models.transaction_model import TransactionModel
 from src.core.schemas.transaction_schema import CreateTransactionSchema, UpdateTransactionSchema
 from src.database.connection import SessionLocal
@@ -12,12 +12,24 @@ class TransactionRepository:
 	def __init__(self, session):
 		self.session = session
 
-	def create(self, data: CreateTransactionSchema) -> TransactionModel:
-		transaction = TransactionModel(user_id=data.user_id, date=data.date, amount=data.amount, description=data.description, category=data.category, type=data.type)
-		self.session.add(transaction)
+	def create(self, data: CreateTransactionSchema | list[CreateTransactionSchema]) -> list[TransactionModel]:
+		transactions = []
+		if isinstance(data, list):
+			for item in data:
+				transactions.append(TransactionModel(user_id=item.user_id, date=item.date, amount=item.amount, description=item.description, category=item.category, type=item.type))
+		else:
+			# check if data is instance of CreateTransactionSchema
+			if not isinstance(data, CreateTransactionSchema):
+				raise TypeError("data should be an instance of CreateTransactionSchema")
+			# check if data has all required keys
+			transactions.append(TransactionModel(user_id=data.user_id, date=data.date, amount=data.amount, description=data.description, category=data.category, type=data.type))
+		# self.session.add_all(transactions)
+		# self.session.commit()
+		# stmt = insert(TransactionModel).values(transactions)
+		# self.session.execute(stmt)
+		self.session.add_all(transactions)
 		self.session.commit()
-		self.session.refresh(transaction)
-		return transaction
+		return transactions
 
 	def get_all(self):
 		return self.session.query(TransactionModel).all()

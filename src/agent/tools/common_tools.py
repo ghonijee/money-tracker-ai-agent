@@ -56,7 +56,7 @@ class GetUserIdTool(Tool):
 		return "get_user_id"
 
 	def description(self) -> str:
-		return "Get user ID from the encrypted user ID"
+		return "Get user ID from the encrypted user ID. Alwasys use this tool to get the user ID when you need a user ID."
 
 	def run(self, args):
 		return self.create_encrypted_user_id(self.id)

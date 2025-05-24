@@ -27,7 +27,6 @@ class Agent:
 		self.context = None
 
 	def initialize_tools(self):
-		# self.add_tool(GreetTool())
 		self.add_tool(GetDateTool())
 		self.add_tool(GetListCategoryTool())
 		self.add_tool(CreateTransactionTool())
@@ -42,25 +41,18 @@ class Agent:
 		self.prompt = f"""You are an expert assistant who can solve any task using thinking what step should be and tool calls. You will be given a task to solve as best you can.
   		To do so, you have been given access to some tools.
 		  
-		The tool call you write is an action: after the tool is executed, you will get the result of the tool call as an "observation".
-  		This Action/Observation can repeat N times, you should take several steps when needed.
+		The tool call you write is an action: after the tool is executed, you will get the result of the tool call as an "Observation".
+		You can use the result of the previous action in the observation as input for the next action. 
+  		This Thought/Action/Observation can repeat N times, you should take several steps when needed.
 		  
-		You can use the result of the previous action as input for the next action.
-		The observation will always be a string.
-		Then you can use it as input for the next action. You can do it for instance as follows:
-
-		Thought: I need to get the user ID for the transaction.
-		Action: {{"name": "get_user_id", "args": {{}}}}
-		Observation: "useridrandomstring"
-
-		Thought: I need to greet the user.
-		Action: {{"name": "greet", "args": {{"user_id": "useridrandomstring"}}}}
+		Please provide a concise and clear response in the following format: 
+		"Thought: [you should always think about one action to take. Only one action at a time in this format] | Action: [JSON_BLOB following action format {{"name": "tool_name","args": "object tool_arguments"}}]". 
+		Don't add any other text or explanation outside of this format.
 
 		To provide the final answer to the task, use an action blob with "name": "final_answer" tool. It is the only way to complete the task, else you will be stuck on a loop. So your final output should look like this:
+		Thought: I now know the final answer
 		Action:
-		{{"name": "final_answer",
-			"arguments": {{"answer": "insert your final answer here"}}
-		}}
+		{{"name": "final_answer","args": {{"answer": "insert your final answer here"}}}}
 
 		Here are a few examples using notional tools:
 		---
@@ -68,7 +60,7 @@ class Agent:
 		Thought: I need to calculate the result of the operation.
 		Action:
 		{{"name": "python_interpreter",
-			"arguments": {{"code": "5 + 3 + 1294.678"}}
+			"args": {{"code": "5 + 3 + 1294.678"}}
 		}}
 		Observation: 1302.678
 
@@ -76,7 +68,7 @@ class Agent:
 		Action:
 		{{
 			"name": "final_answer",
-			"arguments": "1302.678"
+			"args": "1302.678"
 		}}
 
 		---
@@ -85,7 +77,7 @@ class Agent:
 		Action:
 		{{
 			"name": "search",
-			"arguments": "Population Guangzhou"
+			"args": "Population Guangzhou"
 		}}
 		Observation: ['Guangzhou has a population of 15 million inhabitants as of 2021.']
 
@@ -93,14 +85,15 @@ class Agent:
 		Action:
 		{{
 			"name": "search",
-			"arguments": "Population Shanghai"
+			"args": "Population Shanghai"
 		}}
 		Observation: '26 million (2019)'
 
 		Thought: I now know the final answer
 		Action:
-		{{"name": "final_answer",
-			"arguments": "Shanghai"
+		{{
+			"name": "final_answer",
+			"args": "Shanghai"
 		}}
 
 		---
@@ -110,11 +103,15 @@ class Agent:
 		Here are the rules you should always follow to solve your task:
 		1. ALWAYS provide a tool call, else you will fail.
 		2. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.
-		3. Call a tool only when needed: do not call the search agent if you do not need information, try to solve the task yourself. If no tool call is needed, use final_answer tool to return your answer.
-		4. Never re-do a tool call that you previously did with the exact same parameters.
-		5. Always use the `get_user_id` tool to retrieve the user ID for the transaction
-		6. Always use the `generate_date` tool to retrieve the date for the transaction, when the date is not fully defined in the input.
-		7. Analyze, summarize the answer and give the final answer using friendly and concise style and generate answer targeted to the user input source.
+		3. Never re-do a tool call that you previously did with the exact same parameters.
+		4. If the tools result is invalid, you should not use it as input for the next action. try once again to call the tool with the correct arguments.
+		5. Always use the `generate_date` tool to retrieve the date for the transaction, when the date is not fully defined in the input.
+		6. Always use the `get_user_id` tool to retrieve the user ID for the transaction
+		7. Analyze the result, condense the information into a clear and concise summary, and provide a friendly and accurate final answer tailored to the user's source of inquiry.
+		8. ALWAYS give the final answer using Bahasa Indonesia language. You are not allowed to use any other language than Bahasa Indonesia.
+		9. Don't fill or write the value of Observation by your self. it will be filled by system.
+		10. Don't use the word "Observation" in your response. It will be added by the system.
+
 
 		Now Begin!
 		"""
@@ -139,52 +136,72 @@ class Agent:
 		return response or ""
 
 	def run(self, input, user_id):
-		self.add_tool(GetUserIdTool(user_id))
-		self.initialize_prompt()
+		try:
+			self.add_tool(GetUserIdTool(user_id))
+			self.initialize_prompt()
 
-		query = input
-		# submit the query to the LLM
-		response = self.submit_query(query)
-		isFinalResponse = False
-		max_loop = 10
-		while max_loop > 0:
-			max_loop -= 1
-			if "Action:" in response:
-				json_blob = response.split("Action:")[1].split("Observation:")[0].strip()
-				json_dict = self.json_parser(json_blob)
-				# # get the action name from the dictionary
-				action_name = json_dict["name"]
-				# # get the arguments from the dictionary
-				if json_dict["args"] == "":
-					action_args = {}
-				else:
-					action_args = json_dict["args"]
-				# check if the action is a tool
-				if action_name == "final_answer":
-					# get the final answer
-					return json_dict["args"]["answer"]
+			query = input
+			# submit the query to the LLM
+			response = self.submit_query(query)
+			print("Response: \n", response)
 
-				for tool in self.tools:
-					if tool.name().lower() == action_name.lower():
-						result = tool.run(action_args)
-						# append result tool to response
-						response += " Observation: " + result
+			isFinalResponse = False
+			max_loop = 10
+			while max_loop > 0:
+				max_loop -= 1
+				if "Action:" in response:
+					action_name, action_args = self.extract_action_from_response(response)
+					if action_name == "final_answer":
+						return action_args["answer"]
+					for tool in self.tools:
+						if tool.name().lower() == action_name.lower():
+							result = tool.run(action_args)
+							print("Observation: ", result)
+							# append result tool to response
+							response += f" Observation: {result}"
 
-						self.add_memory(f"Assistant: {response}")
-						query = response
-						break
+							self.add_memory(f"Assistant: {response}")
+							query = response
+							break
+					# resubmit the query again to the LLM
+					response = self.submit_query(query, "assistant")
+					print("Response: \n", response)
+		except Exception as e:
+			response = f"""
+				{response}
+			   	Observation: System Error, direct generate the final answer informed the user that the system is error and apologize for the error."""
+			print("Error: ", e)
+			response = self.submit_query(response, "assistant")
+			action, action_args = self.extract_action_from_response(response)
+			if action == "final_answer":
+				return action_args["answer"]
 
-				# resubmit the query again to the LLM
-				response = self.submit_query(query, "assistant")
+	def extract_action_from_response(self, response):
+		json_blob = response.split("Action:")[1]
+		# print("JSON BLOB: ", json_blob)
+		json_dict = self.json_parser(json_blob)
+		# # get the action name from the dictionary
+		action_name = json_dict["name"]
+		# # get the arguments from the dictionary
+		if json_dict["args"] == "":
+			action_args = {}
+		else:
+			action_args = json_dict["args"]
+
+		return action_name, action_args
 
 	def json_parser(self, input_string):
 		clean = input_string.strip()
 		try:
-			# python_dict = ast.literal_eval(input_string)
-			# json_string = json.dumps(python_dict)
 			json_dict = json.loads(clean)
 			return json_dict
 		except Exception as e:
-			print(e)
-			print(input_string)
+			decoder = json.JSONDecoder()
+			# try to decode the string
+			try:
+				json_dict, _ = decoder.raw_decode(clean)
+				return json_dict
+			except json.JSONDecodeError as e:
+				print("Error decoding JSON: ", e)
+				# raise Exception("Invalid JSON")
 			raise Exception("Invalid JSON")
