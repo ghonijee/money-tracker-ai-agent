@@ -1,4 +1,6 @@
 from fastapi import Depends
+from jinja2 import Template
+import yaml
 
 from src.agent.tools.category_tools import GetListCategoryTool
 from src.agent.tools.common_tools import GetDateTool, GetUserIdTool
@@ -17,14 +19,13 @@ def get_agent(llm_service: LLMService = Depends(get_llm_service)):
 
 class Agent:
 	def __init__(self, llm_service: LLMService = Depends(get_llm_service)) -> None:
+		self.llm_service = llm_service
 		self.user_id = ""
 		self.tools = []
 		self.messages = []
 		self.memory = []
 		self.max_memory = 10
-		self.llm_service = llm_service
 		self.initialize_tools()
-		self.context = None
 
 	def initialize_tools(self):
 		self.add_tool(GetDateTool())
@@ -35,22 +36,11 @@ class Agent:
 		self.add_tool(DeleteTransactionTool())
 
 	def initialize_prompt(self):
-		self.messages = []
 		tools_description = "\n".join([f"{tool.name()}: {tool.description()} Args: {tool.get_args_schema()} Output: {tool.output_schema()}" for tool in self.tools])
 
-		self.prompt = f"""
-		You are an AI agent that can assist users with their financial transactions. for each task, output exactly:
-		Thought: <your reasoning about the task, only one task at a time>
-		Action: {{"name": "tool_name", "args": {{"<tool_args>""}}}}
+		template = yaml.safe_load(open("src/agent/prompt/system_prompt.yaml", "r"))
+		self.prompt = Template(template["system_prompt"]["v3"]).render(tools_description=tools_description)
 
-		Repeat steps as needed until you have a final answer.
-		Action: {{"name": "final_answer", "args": {{"answer": <your final answer>"}}}}
-
-		You have access to the following tools:
-		{tools_description}
-
-		Use only the provided tools. Always response final answer in Bahasa Indonesia. No extra text.
-		"""
 		self.messages.append({"role": "system", "content": self.prompt})
 		self.add_memory(f"System: {self.prompt}")
 
@@ -102,6 +92,7 @@ class Agent:
 					response = self.submit_query("Observation: You not provide the Action on your answer", "user")
 					self.messages.append({"role": "assistant", "content": response})
 		except Exception as e:
+			print(f"Error occurred: {e}")
 			response = f"""
 				{response}
 			   	Observation: System Error, direct generate the final answer informed the user that the system is error and apologize for the error."""
