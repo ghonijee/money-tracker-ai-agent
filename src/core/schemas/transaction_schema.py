@@ -17,6 +17,9 @@ class CreateTransactionSchema:
 		self.category = category
 		self.type = type
 
+	def to_dict(self):
+		return {"user_id": self.user_id, "date": self.date, "amount": self.amount, "description": self.description, "category": self.category, "type": self.type}
+
 
 class UpdateTransactionSchema:
 	id: int

@@ -26,35 +26,15 @@ class CreateTransactionTool(Tool):
 		for arg in args:
 			createData.append(CreateTransactionSchema(user_id=arg["user_id"], date=arg["date"], amount=arg["amount"], description=arg["description"], category=arg["category"], type=arg["type"]))
 
-		transactions = self.repository.create(createData)
+		self.repository.create(createData)
 		return {
-			"message": f"{len(transactions)} record(s) successfully created",
-			"transactions": createData,
+			"message": f"{len(createData)} record(s) successfully created",
+			"transactions": [item.to_dict() for item in createData],
 		}
 
 	def get_args_schema(self):
 		return """
 		Args: Accepts list of objects to create one or multiple transactions.
-		List of objects example:
-		[
-			{
-				"user_id": "string",
-				"date": "YYYY-MM-DD",
-				"amount": 1000,
-				"description": "Description of the transaction",
-				"category": "Category of the transaction",
-				"type": "expense"
-			},
-			{
-				"user_id": "string",
-				"date": "YYYY-MM-DD",
-				"amount": 500,
-				"description": "Another transaction",
-				"category": "Another category",
-				"type": "income"
-			}
-		]
-
 		Each object must include:
 		- user_id (str): User ID
 		- date (date): Date of the transaction

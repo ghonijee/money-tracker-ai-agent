@@ -1,4 +1,3 @@
-import json
 from fastapi import Depends
 
 from src.agent.tools.category_tools import GetListCategoryTool
@@ -39,82 +38,18 @@ class Agent:
 		self.messages = []
 		tools_description = "\n".join([f"{tool.name()}: {tool.description()} Args: {tool.get_args_schema()} Output: {tool.output_schema()}" for tool in self.tools])
 
-		self.prompt = f"""You are an expert assistant who can solve any task using thinking what step should be and tool calls. You will be given a task to solve as best you can.
-  		To do so, you have been given access to some tools.
-		  
-		The tool call you write is an action: after the tool is executed, you will get the result of the tool call as an "Observation".
-		You can use the result of the previous action in the observation as input for the next action. 
-  		This Thought/Action/Observation can repeat N times, you should take several steps when needed.
-		  
-		Please provide a concise and clear response in the following format: 
-		"Thought: [you should always think about one action to take. Only one action at a time in this format] | Action: [JSON_BLOB following action format {{"name": "tool_name","args": "object tool_arguments"}}]". 
-		Don't add any other text or explanation outside of this format.
+		self.prompt = f"""
+		You are an AI agent that can assist users with their financial transactions. for each task, output exactly:
+		Thought: <your reasoning about the task, only one task at a time>
+		Action: {{"name": "tool_name", "args": {{"<tool_args>""}}}}
 
-		To provide the final answer to the task, use an action blob with "name": "final_answer" tool. It is the only way to complete the task, else you will be stuck on a loop. So your final output should look like this:
-		Thought: I now know the final answer
-		Action:
-		{{"name": "final_answer","args": {{"answer": "insert your final answer here"}}}}
+		Repeat steps as needed until you have a final answer.
+		Action: {{"name": "final_answer", "args": {{"answer": <your final answer>"}}}}
 
-		Here are a few examples using notional tools:
-		---
-		Task: "What is the result of the following operation: 5 + 3 + 1294.678?"
-		Thought: I need to calculate the result of the operation.
-		Action:
-		{{"name": "python_interpreter",
-			"args": {{"code": "5 + 3 + 1294.678"}}
-		}}
-		Observation: 1302.678
-
-		Thought: I now know the final answer
-		Action:
-		{{
-			"name": "final_answer",
-			"args": "1302.678"
-		}}
-
-		---
-		Task: "Which city has the highest population , Guangzhou or Shanghai?"
-		Thought: I need to get the population of Guangzhou.
-		Action:
-		{{
-			"name": "search",
-			"args": "Population Guangzhou"
-		}}
-		Observation: ['Guangzhou has a population of 15 million inhabitants as of 2021.']
-
-		Thought: I need to get the population of Shanghai.
-		Action:
-		{{
-			"name": "search",
-			"args": "Population Shanghai"
-		}}
-		Observation: '26 million (2019)'
-
-		Thought: I now know the final answer
-		Action:
-		{{
-			"name": "final_answer",
-			"args": "Shanghai"
-		}}
-
-		---
-		Above example were using notional tools that might not exist for you. You only have access to these tools:
+		You have access to the following tools:
 		{tools_description}
 
-		Here are the rules you should always follow to solve your task:
-		1. ALWAYS provide a tool call, else you will fail.
-		2. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.
-		3. Never re-do a tool call that you previously did with the exact same parameters.
-		4. If the tools result is invalid, you should not use it as input for the next action. try once again to call the tool with the correct arguments.
-		5. Always use the `generate_date` tool to retrieve the date for the transaction, when the date is not fully defined in the input.
-		6. Always use the `get_user_id` tool to retrieve the user ID for the transaction
-		7. Analyze the result, condense the information into a clear and concise summary, and provide a friendly and accurate final answer tailored to the user's source of inquiry.
-		8. ALWAYS give the final answer using Bahasa Indonesia language. You are not allowed to use any other language than Bahasa Indonesia.
-		9. Don't fill or write the value of Observation by your self. it will be filled by system.
-		10. Don't use the word "Observation" in your response. It will be added by the system.
-
-
-		Now Begin!
+		Use only the provided tools. Always response final answer in Bahasa Indonesia. No extra text.
 		"""
 		self.messages.append({"role": "system", "content": self.prompt})
 		self.add_memory(f"System: {self.prompt}")
@@ -137,6 +72,7 @@ class Agent:
 		return response or ""
 
 	def run(self, input, user_id):
+		response = ""
 		try:
 			self.add_tool(GetUserIdTool(user_id))
 			self.initialize_prompt()
@@ -144,31 +80,27 @@ class Agent:
 			query = input
 			# submit the query to the LLM
 			response = self.submit_query(query)
-			print("Response: \n", response)
+			self.messages.append({"role": "assistant", "content": response})
 
-			isFinalResponse = False
 			max_loop = 10
 			while max_loop > 0:
 				max_loop -= 1
 				if "Action:" in response:
 					action_name, action_args = self.extract_action_from_response(response)
-					print("Action: ", action_name)
-					print("Action Args: ", action_args)
 					if action_name == "final_answer":
 						return action_args["answer"]
 					for tool in self.tools:
 						if tool.name().lower() == action_name.lower():
 							result = tool.run(action_args)
-							print("Observation: ", result)
-							# append result tool to response
-							response += f" Observation: {result}"
-
-							self.add_memory(f"Assistant: {response}")
-							query = response
+							query = f"Observation: {result}"
 							break
 					# resubmit the query again to the LLM
-					response = self.submit_query(query, "assistant")
-					print("Response: \n", response)
+					response = self.submit_query(query, "user")
+					self.messages.append({"role": "assistant", "content": response})
+				else:
+					print("No action found in response, returning final answer")
+					response = self.submit_query("Observation: You not provide the Action on your answer", "user")
+					self.messages.append({"role": "assistant", "content": response})
 		except Exception as e:
 			response = f"""
 				{response}
