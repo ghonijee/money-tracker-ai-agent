@@ -1,6 +1,7 @@
 from datetime import datetime
 import hashlib
 import hmac
+from mimetypes import guess_type
 import os
 
 from dotenv import load_dotenv
@@ -8,6 +9,8 @@ from src.core.interfaces.tool import Tool
 from datetime import timezone as tz
 
 from src.services.llm_service import get_llm_service
+import base64
+from pathlib import Path
 
 load_dotenv()
 
@@ -71,12 +74,68 @@ class GetUserIdTool(Tool):
 		digest = hmac.new(secret_key.encode(), user_id.encode(), digestmod=hashlib.sha256).hexdigest()
 		return digest
 
-	# def create_encrypted_user_id(self, user_id):
-	#     # encrypt user_id with a key from env SECRET_KEY
-	#     secret_key = os.getenv("SECRET_KEY")
-	#     if not secret_key:
-	#         raise RuntimeError("Set MY_SECRET_KEY to your Fernet key!")
 
-	#     fernet = Fernet(secret_key.encode())
-	#     encrypted_user_id = fernet.encrypt(user_id.encode()).decode()
-	#     return encrypted_user_id
+class ImageExtractInformationTool(Tool):
+	def name(self) -> str:
+		return "image_extract_information"
+
+	def description(self) -> str:
+		return "Extract information from an image."
+
+	def run(self, args):
+		if "image_path" in args:
+			image_path = args["image_path"]
+			if not os.path.exists(image_path):
+				raise FileNotFoundError(f"Image file not found: {image_path}")
+
+		# get full path from root directory
+		if not os.path.isabs(image_path):
+			image_path = os.path.join(os.getcwd(), image_path)
+		if not os.path.isfile(image_path):
+			raise FileNotFoundError(f"Image file does not exist or is not a file: {image_path}")
+		if not image_path.lower().endswith((".png", ".jpg", ".jpeg", ".gif")):
+			raise ValueError("Unsupported image format. Supported formats are: PNG, JPG, JPEG, GIF.")
+		if not os.access(image_path, os.R_OK):
+			raise PermissionError(f"Image file is not readable: {image_path}")
+
+		image_base64_resuslt = self.image_to_data_uri(image_path)
+
+		contents = []
+		if "caption" in args and args["caption"]:
+			contents.append(
+				{
+					"type": "text",
+					"text": f"""
+					What is the information in this image?
+					Caption: {args.get("caption", "No caption provided")}
+					""",
+				}
+			)
+
+		contents.append({"type": "image_url", "image_url": {"url": image_base64_resuslt}})
+		llm_service = get_llm_service()
+		resp = llm_service.query_execute(messages=[{"role": "user", "content": contents}])
+		return resp
+
+	def encode_image_to_base64(self, image_path: str) -> str:
+		with open(image_path, "rb") as image_file:
+			encoded_bytes = base64.b64encode(image_file.read())
+		return encoded_bytes.decode("utf-8")
+
+	from mimetypes import guess_type
+
+	def image_to_data_uri(self, image_path: str) -> str:
+		mime_type, _ = guess_type(image_path)
+		if not mime_type:
+			mime_type = "application/octet-stream"
+		base64_str = self.encode_image_to_base64(image_path)
+		return f"data:{mime_type};base64,{base64_str}"
+
+	def get_args_schema(self):
+		return [
+			{"name": "caption", "type": "str", "description": "Caption for the image from the user input/message", "status": "optional"},
+			{"name": "image_path", "type": "str", "description": "Path to the image to analyze", "status": "required"},
+		]
+
+	def output_schema(self):
+		return "str"

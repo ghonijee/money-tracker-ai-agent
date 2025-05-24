@@ -47,7 +47,11 @@ class WebhookMessageService:
 					message = self.whatsapp.get_message(data)
 					model.message_content = message or ""
 				elif message_type == "image":
+					model.message_type = "image"
+
 					image = self.whatsapp.get_image(data)
+					# get caption if available
+					model.message_content = image["caption"] if image is not None and "caption" in image and image["caption"] is not None else ""
 					if image is not None and "id" in image and "mime_type" in image:
 						image_id, mime_type = image["id"], image["mime_type"]
 						image_url = self.whatsapp.query_media_url(image_id)

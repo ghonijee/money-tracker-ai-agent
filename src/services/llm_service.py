@@ -16,17 +16,26 @@ class LLMService:
 			api_key=os.getenv("OPEN_ROUTER_KEY"),
 			base_url="https://openrouter.ai/api/v1",
 		)
+		self.models = [
+			"meta-llama/llama-4-maverick:free",
+			"meta-llama/llama-4-scout:free",
+			"meta-llama/llama-3.3-70b-instruct:free",
+			"deepseek/deepseek-chat-v3-0324:free",
+		]
 
-	def query_execute(self, messages: Iterable[ChatCompletionMessageParam], max_token: int | None | NotGiven = NOT_GIVEN, stop: Union[Optional[str], List[str], None] | NotGiven = NOT_GIVEN):
+	def query_execute(
+		self,
+		messages: Iterable[ChatCompletionMessageParam],
+		max_token: int | None | NotGiven = NOT_GIVEN,
+		stop: Union[Optional[str], List[str], None] | NotGiven = NOT_GIVEN,
+		model: str | None = None,
+	):
 		completion = self.client.chat.completions.create(
 			extra_headers={
 				"X-Title": "Expense Tracker AI Agent",
 				"HTTP-Referer": "https://github.com/ghonijee/money-tracker-ai-agent",
 			},
-			# model="meta-llama/llama-3.3-70b-instruct:free",
-			model="meta-llama/llama-4-maverick:free",
-			# model="meta-llama/llama-4-scout:free",
-			# model="deepseek/deepseek-chat-v3-0324:free",
+			model=model if model is not None else self.models[0],
 			messages=messages,
 			stop=stop,
 			max_tokens=max_token,

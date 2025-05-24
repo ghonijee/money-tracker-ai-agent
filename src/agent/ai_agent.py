@@ -3,7 +3,7 @@ from jinja2 import Template
 import yaml
 
 from src.agent.tools.category_tools import GetListCategoryTool
-from src.agent.tools.common_tools import GetDateTool, GetUserIdTool
+from src.agent.tools.common_tools import GetDateTool, GetUserIdTool, ImageExtractInformationTool
 from src.agent.tools.greet import GreetTool
 from src.agent.tools.transaction_tools import CreateTransactionTool, DeleteTransactionTool, FindTransactionTool, UpdateTransactionTool
 from src.core.models.message_model import MessageModel
@@ -28,6 +28,7 @@ class Agent:
 		self.initialize_tools()
 
 	def initialize_tools(self):
+		self.add_tool(ImageExtractInformationTool())
 		self.add_tool(GetDateTool())
 		self.add_tool(GetListCategoryTool())
 		self.add_tool(CreateTransactionTool())
@@ -70,6 +71,7 @@ class Agent:
 			query = input
 			# submit the query to the LLM
 			response = self.submit_query(query)
+			print(f"Response: {response}")
 			self.messages.append({"role": "assistant", "content": response})
 
 			max_loop = 10
@@ -83,13 +85,18 @@ class Agent:
 						if tool.name().lower() == action_name.lower():
 							result = tool.run(action_args)
 							query = f"Observation: {result}"
+							print(f"Observation: {query}")
+
 							break
 					# resubmit the query again to the LLM
 					response = self.submit_query(query, "user")
+					print(f"Response: {response}")
+
 					self.messages.append({"role": "assistant", "content": response})
 				else:
 					print("No action found in response, returning final answer")
 					response = self.submit_query("Observation: You not provide the Action on your answer", "user")
+					print(f"Response: {response}")
 					self.messages.append({"role": "assistant", "content": response})
 		except Exception as e:
 			print(f"Error occurred: {e}")
@@ -97,6 +104,7 @@ class Agent:
 				{response}
 			   	Observation: System Error, direct generate the final answer informed the user that the system is error and apologize for the error."""
 			response = self.submit_query(response, "assistant")
+			print(f"Response: {response}")
 			action, action_args = self.extract_action_from_response(response)
 			if action == "final_answer":
 				return action_args["answer"]
