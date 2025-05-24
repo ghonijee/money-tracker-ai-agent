@@ -7,6 +7,7 @@ from src.agent.tools.greet import GreetTool
 from src.agent.tools.transaction_tools import CreateTransactionTool, DeleteTransactionTool, FindTransactionTool, UpdateTransactionTool
 from src.core.models.message_model import MessageModel
 from src.services.llm_service import LLMService, get_llm_service
+from src.services.utils import extract_json_from_string
 
 
 def get_agent(llm_service: LLMService = Depends(get_llm_service)):
@@ -151,6 +152,8 @@ class Agent:
 				max_loop -= 1
 				if "Action:" in response:
 					action_name, action_args = self.extract_action_from_response(response)
+					print("Action: ", action_name)
+					print("Action Args: ", action_args)
 					if action_name == "final_answer":
 						return action_args["answer"]
 					for tool in self.tools:
@@ -170,38 +173,13 @@ class Agent:
 			response = f"""
 				{response}
 			   	Observation: System Error, direct generate the final answer informed the user that the system is error and apologize for the error."""
-			print("Error: ", e)
 			response = self.submit_query(response, "assistant")
 			action, action_args = self.extract_action_from_response(response)
 			if action == "final_answer":
 				return action_args["answer"]
 
 	def extract_action_from_response(self, response):
-		json_blob = response.split("Action:")[1]
-		# print("JSON BLOB: ", json_blob)
-		json_dict = self.json_parser(json_blob)
-		# # get the action name from the dictionary
+		json_dict = extract_json_from_string(response)
 		action_name = json_dict["name"]
-		# # get the arguments from the dictionary
-		if json_dict["args"] == "":
-			action_args = {}
-		else:
-			action_args = json_dict["args"]
-
+		action_args = json_dict["args"] if json_dict["args"] != "" else {}
 		return action_name, action_args
-
-	def json_parser(self, input_string):
-		clean = input_string.strip()
-		try:
-			json_dict = json.loads(clean)
-			return json_dict
-		except Exception as e:
-			decoder = json.JSONDecoder()
-			# try to decode the string
-			try:
-				json_dict, _ = decoder.raw_decode(clean)
-				return json_dict
-			except json.JSONDecodeError as e:
-				print("Error decoding JSON: ", e)
-				# raise Exception("Invalid JSON")
-			raise Exception("Invalid JSON")
