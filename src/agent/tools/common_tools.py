@@ -3,6 +3,7 @@ import hashlib
 import hmac
 from mimetypes import guess_type
 import os
+import sys
 
 from dotenv import load_dotenv
 from src.core.interfaces.tool import Tool
@@ -10,7 +11,6 @@ from datetime import timezone as tz
 
 from src.services.llm_service import get_llm_service
 import base64
-from pathlib import Path
 
 load_dotenv()
 
@@ -59,7 +59,7 @@ class GetUserIdTool(Tool):
 		return "get_user_id"
 
 	def description(self) -> str:
-		return "Get user ID from the encrypted user ID. Alwasys use this tool to get the user ID when you need a user ID."
+		return "Get user ID from the encrypted user ID. Always use this tool to get the user ID when you need a user ID."
 
 	def run(self, args):
 		return self.create_encrypted_user_id(self.id)
@@ -112,9 +112,17 @@ class ImageExtractInformationTool(Tool):
 				}
 			)
 
+		system_prompt = (
+			"You are an image information extractor. "
+			"Given an image, extract the information from the image and return it in a structured format JSON_BLOB."
+			"Always output ONLY valid JSON with format {'information': {...}}."
+			"Don't output anything else."
+		)
+
 		contents.append({"type": "image_url", "image_url": {"url": image_base64_resuslt}})
 		llm_service = get_llm_service()
-		resp = llm_service.query_execute(messages=[{"role": "user", "content": contents}])
+		resp = llm_service.query_execute(messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": contents}])
+		self.remove_image_file(image_path)
 		return resp
 
 	def encode_image_to_base64(self, image_path: str) -> str:
@@ -130,6 +138,15 @@ class ImageExtractInformationTool(Tool):
 			mime_type = "application/octet-stream"
 		base64_str = self.encode_image_to_base64(image_path)
 		return f"data:{mime_type};base64,{base64_str}"
+
+	def remove_image_file(self, image_path: str):
+		if os.path.exists(image_path):
+			try:
+				os.remove(image_path)
+			except OSError as e:
+				print(f"Error removing file {image_path}: {e}")
+		else:
+			print(f"File {image_path} does not exist, cannot remove.")
 
 	def get_args_schema(self):
 		return [

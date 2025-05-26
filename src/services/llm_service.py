@@ -17,11 +17,17 @@ class LLMService:
 			base_url="https://openrouter.ai/api/v1",
 		)
 		self.models = [
-			"meta-llama/llama-4-maverick:free",
 			"meta-llama/llama-4-scout:free",
+			"meta-llama/llama-4-maverick:free",
 			"meta-llama/llama-3.3-70b-instruct:free",
 			"deepseek/deepseek-chat-v3-0324:free",
+			"google/gemma-3-27b-it:free",
 		]
+
+	def get_random_model(self):
+		import random
+
+		return random.choice(self.models)
 
 	def query_execute(
 		self,
@@ -35,7 +41,7 @@ class LLMService:
 				"X-Title": "Expense Tracker AI Agent",
 				"HTTP-Referer": "https://github.com/ghonijee/money-tracker-ai-agent",
 			},
-			model=model if model is not None else self.models[0],
+			model=model if model is not None else self.get_random_model(),
 			messages=messages,
 			stop=stop,
 			max_tokens=max_token,

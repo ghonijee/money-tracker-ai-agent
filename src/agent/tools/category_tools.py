@@ -6,7 +6,7 @@ class GetListCategoryTool(Tool):
 		return "get_list_category"
 
 	def description(self) -> str:
-		return "Get list of category for expense/income classification, ALWASYS use this tool to get the list of categories"
+		return "Get list of category for expense/income classification, ALWAYS use this tool to get the list of categories"
 
 	def run(self, args) -> str:
 		cartegories = [

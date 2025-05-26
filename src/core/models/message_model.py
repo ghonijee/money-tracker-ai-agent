@@ -4,6 +4,7 @@ from typing import Optional
 class MessageModel:
 	def __init__(
 		self,
+		user_id: str,
 		sender_phone_number: str,
 		sender_name: str,
 		message_type: str,
@@ -23,6 +24,7 @@ class MessageModel:
 		:param image_file_path: The file path of the image (if applicable).
 		:param source: The source of the message (e.g., WhatsApp, Telegram).
 		"""
+		self.user_id = user_id
 		self.sender_phone_number = sender_phone_number
 		self.sender_name = sender_name
 		self.message_type = message_type
@@ -51,6 +53,7 @@ class MessageModel:
 		:return: A string representation of the MessageModel in context format.
 		"""
 		return f"""
+		User ID: {self.user_id}
 		Message Type: {self.message_type} 
 		Message Content: {self.message_content} 
 		Image URL: {self.image_public_url} 

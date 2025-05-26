@@ -34,14 +34,16 @@ class CreateTransactionTool(Tool):
 
 	def get_args_schema(self):
 		return """
-		Args: Accepts list of objects to create one or multiple transactions.
-		Each object must include:
-		- user_id (str): User ID
-		- date (date): Date of the transaction
-		- amount (int): Amount of the transaction
-		- description (str): Description of the transaction
-		- category (str): Category of the transaction
-		- type (enum: expense, income): Type of the transaction
+		[
+			{
+				"user_id":"User ID",
+				"date":"Date of the transaction",
+				"amount":"Amount of the transaction",
+				"description":"Description of the transaction",
+				"category":"Category of the transaction",
+				"type":"Type of the transaction (expense, income)"
+			}
+		]
 		"""
 
 	def output_schema(self):

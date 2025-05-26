@@ -1,3 +1,4 @@
+from ast import mod
 from fastapi import Depends
 from jinja2 import Template
 import yaml
@@ -25,7 +26,10 @@ class Agent:
 		self.messages = []
 		self.memory = []
 		self.max_memory = 10
+		self.max_iterations = 0
+		self.max_retry_on_error = 3
 		self.initialize_tools()
+		self.initialize_prompt()
 
 	def initialize_tools(self):
 		self.add_tool(ImageExtractInformationTool())
@@ -40,7 +44,7 @@ class Agent:
 		tools_description = "\n".join([f"{tool.name()}: {tool.description()} Args: {tool.get_args_schema()} Output: {tool.output_schema()}" for tool in self.tools])
 
 		template = yaml.safe_load(open("src/agent/prompt/system_prompt.yaml", "r"))
-		self.prompt = Template(template["system_prompt"]["v3"]).render(tools_description=tools_description)
+		self.prompt = Template(template["system_prompt"]["v4"]).render(tools_description=tools_description)
 
 		self.messages.append({"role": "system", "content": self.prompt})
 		self.add_memory(f"System: {self.prompt}")
@@ -52,31 +56,28 @@ class Agent:
 		self.memory.append(memory)
 		self.memory = self.memory[-self.max_memory :]
 
+	def add_message(self, role: str, content: str):
+		self.messages.append({"role": role, "content": content})
+		self.add_memory(f"{role}: {content}")
+
 	def process_message(self, message: MessageModel):
-		response = self.run(message.to_context(), message.sender_phone_number)
+		response = self.run(message.to_context())
 		return response or ""
 
 	def submit_query(self, input: str, role: str = "user"):
-		self.add_memory(f"{role}: {input}")
-		self.messages.append({"role": role, "content": input})
-		response = self.llm_service.query_execute(self.messages, stop=["Observation:", "<|end_of_text|>"])
+		self.add_message(role=role, content=input)
+		response = self.llm_service.query_execute(self.messages, stop=["<STOP>"])
 		return response or ""
 
-	def run(self, input, user_id):
+	def run(self, input, max_iterations: int = 10):
 		response = ""
 		try:
-			self.add_tool(GetUserIdTool(user_id))
-			self.initialize_prompt()
-
+			self.max_iterations = max_iterations
 			query = input
-			# submit the query to the LLM
-			response = self.submit_query(query)
-			print(f"Response: {response}")
-			self.messages.append({"role": "assistant", "content": response})
-
-			max_loop = 10
-			while max_loop > 0:
-				max_loop -= 1
+			while self.max_iterations > 0:
+				response = self.submit_query(query)
+				self.add_message("assistant", response)
+				self.max_iterations -= 1
 				if "Action:" in response:
 					action_name, action_args = self.extract_action_from_response(response)
 					if action_name == "final_answer":
@@ -85,29 +86,19 @@ class Agent:
 						if tool.name().lower() == action_name.lower():
 							result = tool.run(action_args)
 							query = f"Observation: {result}"
-							print(f"Observation: {query}")
-
 							break
-					# resubmit the query again to the LLM
-					response = self.submit_query(query, "user")
-					print(f"Response: {response}")
-
-					self.messages.append({"role": "assistant", "content": response})
 				else:
-					print("No action found in response, returning final answer")
-					response = self.submit_query("Observation: You not provide the Action on your answer", "user")
-					print(f"Response: {response}")
-					self.messages.append({"role": "assistant", "content": response})
+					query = "Observation: You not provide the Action on your answer."
 		except Exception as e:
-			print(f"Error occurred: {e}")
-			response = f"""
-				{response}
+			if self.max_retry_on_error > 0:
+				response = f"""
+			   	Observation: System Error {e}, please try again"""
+				self.max_retry_on_error -= 1
+				return self.run(response, max_iterations=self.max_iterations)
+			else:
+				response = """
 			   	Observation: System Error, direct generate the final answer informed the user that the system is error and apologize for the error."""
-			response = self.submit_query(response, "assistant")
-			print(f"Response: {response}")
-			action, action_args = self.extract_action_from_response(response)
-			if action == "final_answer":
-				return action_args["answer"]
+				return self.run(response, max_iterations=1)
 
 	def extract_action_from_response(self, response):
 		json_dict = extract_json_from_string(response)

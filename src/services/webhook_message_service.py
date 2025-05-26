@@ -4,6 +4,7 @@ from heyoo import WhatsApp
 import logging
 
 from src.core.models.message_model import MessageModel
+from src.services.utils import create_encrypted_user_id
 
 
 def get_webhook_message_service():
@@ -34,10 +35,15 @@ class WebhookMessageService:
 			new_message = self.whatsapp.is_message(data)
 			if new_message:
 				mobile = self.whatsapp.get_mobile(data)
+				if mobile is None:
+					logging.warning("Received message without mobile number")
+					return None
+				user_id = create_encrypted_user_id(user_id=mobile)
 				name = self.whatsapp.get_name(data)
 				message_type = self.whatsapp.get_message_type(data)
 
 				model = MessageModel(
+					user_id=user_id,
 					sender_phone_number=mobile or "",
 					sender_name=name or "",
 					message_type=message_type or "text",
