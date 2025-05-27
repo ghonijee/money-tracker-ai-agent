@@ -121,7 +121,7 @@ class ImageExtractInformationTool(Tool):
 
 		contents.append({"type": "image_url", "image_url": {"url": image_base64_resuslt}})
 		llm_service = get_llm_service()
-		resp = llm_service.query_execute(messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": contents}])
+		resp = llm_service.query_execute(messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": contents}], model="opengvlab/internvl3-14b:free")
 		self.remove_image_file(image_path)
 		return resp
 

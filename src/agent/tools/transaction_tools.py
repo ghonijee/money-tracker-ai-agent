@@ -116,14 +116,18 @@ class FindTransactionTool(Tool):
 		llm_service = get_llm_service()
 		resp = llm_service.query_execute(
 			messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": query}],
+			model="meta-llama/llama-4-scout:free"
 		)
 		if not resp:
 			return "No response from LLM, please try again"
 		
 		raw_query = self.validate_query_raw_sql(resp)
-		print(f"Raw SQL Query: {raw_query}")
-		transactions = self.repository.findRaw(raw_query)
-		return f"{transactions}"
+		try:
+			print(f"Raw SQL Query: {raw_query}")
+			transactions = self.repository.findRaw(raw_query)
+			return f"{transactions}"
+		except Exception as e:
+			return f"Error executing query: {e}"
 
 	def get_args_schema(self):
 		return [{"name": "query", "type": "string", "description": "Natural-language query"}, {"name": "user_id", "type": "str", "description": "User ID"}]

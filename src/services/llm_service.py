@@ -21,7 +21,9 @@ class LLMService:
 			"meta-llama/llama-4-maverick:free",
 			# "meta-llama/llama-3.3-70b-instruct:free",
 			# "deepseek/deepseek-chat-v3-0324:free",
-			# "google/gemma-3-27b-it:free",
+			# "google/gemma-3-27b-it:free", #best for image
+			# "meta-llama/llama-3.2-11b-vision-instruct:free",
+			# "opengvlab/internvl3-14b:free", # best for image
 		]
 
 	def get_random_model(self):

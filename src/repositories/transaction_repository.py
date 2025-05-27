@@ -59,5 +59,10 @@ class TransactionRepository:
 			raise Exception("Transaction not found")
 
 	def findRaw(self, query):
-		stmt = text(query)
-		return self.session.execute(stmt).all()
+		try:
+			stmt = text(query)
+			return self.session.execute(stmt).all()
+		except Exception as e:
+			self.session.rollback()
+			print(f"Error executing raw SQL query: {e}")
+			raise e
