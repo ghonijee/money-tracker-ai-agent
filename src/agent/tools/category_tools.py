@@ -6,7 +6,7 @@ class GetListCategoryTool(Tool):
 		return "get_list_category"
 
 	def description(self) -> str:
-		return "Get list of category for expense/income classification, ALWAYS use this tool to get the list of categories"
+		return "Get list of category for expense/income classification. Use this tool when you need data of category for create database or other purposes."
 
 	def run(self, args) -> str:
 		cartegories = [
@@ -31,7 +31,6 @@ class GetListCategoryTool(Tool):
 			"Credit Card",
 			"Other",
 		]
-		# join the list of categories with a comma
 		return ",".join(cartegories)
 
 	def get_args_schema(self):

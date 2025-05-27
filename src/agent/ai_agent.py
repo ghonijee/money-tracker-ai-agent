@@ -30,6 +30,7 @@ class Agent:
 		self.max_retry_on_error = 3
 		self.initialize_tools()
 		self.initialize_prompt()
+		self.model_selected = self.llm_service.get_random_model()
 
 	def initialize_tools(self):
 		self.add_tool(ImageExtractInformationTool())
@@ -57,6 +58,7 @@ class Agent:
 		self.memory = self.memory[-self.max_memory :]
 
 	def add_message(self, role: str, content: str):
+		print(f"{role} : {content}")
 		self.messages.append({"role": role, "content": content})
 		self.add_memory(f"{role}: {content}")
 
@@ -66,7 +68,7 @@ class Agent:
 
 	def submit_query(self, input: str, role: str = "user"):
 		self.add_message(role=role, content=input)
-		response = self.llm_service.query_execute(self.messages, stop=["<STOP>"])
+		response = self.llm_service.query_execute(self.messages, stop=["<STOP>"], model=self.model_selected)
 		return response or ""
 
 	def run(self, input, max_iterations: int = 10):
@@ -88,7 +90,7 @@ class Agent:
 							query = f"Observation: {result}"
 							break
 				else:
-					query = "Observation: You not provide the Action on your answer."
+					query = "Observation: You not provide the Action on your answer. Provide the Action in your answer to continue the process. If you want to finish the process, provide the final_answer action with the answer."
 		except Exception as e:
 			if self.max_retry_on_error > 0:
 				response = f"""

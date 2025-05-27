@@ -7,6 +7,8 @@ from heyoo import WhatsApp
 from src.agent.ai_agent import Agent, get_agent
 from src.services.utils import create_encrypted_user_id
 from src.services.webhook_message_service import WebhookMessageService, get_webhook_message_service
+from fastapi.concurrency import run_in_threadpool
+import asyncio
 
 router = routing.APIRouter()
 messenger = WhatsApp(os.getenv("WHATAPP_APP_TOKEN"), phone_number_id=os.getenv("WHATAPP_PHONE_NUMBER_ID"))
@@ -42,8 +44,16 @@ async def hook(request: Request, webhook_service: WebhookMessageService = Depend
 	webhook_data = webhook_service.parse_whatsapp_hook_data(data)
 
 	if webhook_data.is_changed_field() and webhook_data.is_new_message and webhook_data.message is not None:
+		sender_id = webhook_data.message.sender_phone_number
+		message = webhook_data.message
+
 		# jika ada pesan baru, kita proses pesan tersebut
-		response = agent.process_message(webhook_data.message)
+		async def process_and_respond():
+			response = await run_in_threadpool(agent.process_message, message)
+			print("Response from agent:", response)
+			await run_in_threadpool(messenger.send_message, response, sender_id)
+
+		asyncio.create_task(process_and_respond())
 
 	return "OK", 200
 

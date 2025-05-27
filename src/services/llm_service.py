@@ -17,11 +17,11 @@ class LLMService:
 			base_url="https://openrouter.ai/api/v1",
 		)
 		self.models = [
-			"meta-llama/llama-4-scout:free",
+			# "meta-llama/llama-4-scout:free",
 			"meta-llama/llama-4-maverick:free",
-			"meta-llama/llama-3.3-70b-instruct:free",
-			"deepseek/deepseek-chat-v3-0324:free",
-			"google/gemma-3-27b-it:free",
+			# "meta-llama/llama-3.3-70b-instruct:free",
+			# "deepseek/deepseek-chat-v3-0324:free",
+			# "google/gemma-3-27b-it:free",
 		]
 
 	def get_random_model(self):

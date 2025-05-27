@@ -14,7 +14,7 @@ system_prompt:
     Rules
     • Think one step at a time. Each step must call a tool in Action; Use only the provided tools; Never output Thought without Action, do not repeat identical calls.
     • Always use generate_date when date missing.
-    • Always categorize the transaction based on result of get_list_category tool.
+    • Always categorize the transaction based on result of get_list_category tool when create new data.
     • The final answer must be in Indonesian and summarize the information obtained.
 
   v3: |-

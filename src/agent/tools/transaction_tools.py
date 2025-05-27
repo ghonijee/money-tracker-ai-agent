@@ -34,6 +34,7 @@ class CreateTransactionTool(Tool):
 
 	def get_args_schema(self):
 		return """
+		Args should be a list of dictionaries with the following keys
 		[
 			{
 				"user_id":"User ID",
@@ -80,16 +81,21 @@ class FindTransactionTool(Tool):
 		return "find_transaction"
 
 	def description(self) -> str:
-		return "Find or Get data from the database by natural-language query from user input"
+		return "Find or Get data from the database by natural-language query from user input and user_id."
 
 	def run(self, args):
-		query = args["query"]
+		if "query" not in args or "user_id" not in args:
+			return "Args should contain 'query' and 'user_id' keys"
+		if not isinstance(args["query"], str) or not isinstance(args["user_id"], str):
+			return "Args 'query' and 'user_id' should be strings"
+		query = f"Natural Query: {args['query']} User ID: {args['user_id']}"
 
-		system_prompt = (
-			"You are a precise transaction finder. You must return only string the RAW SQL query."
-			"Given RAW SQL query to solve the natural-language query from user input"
-			"""
+		system_prompt = """
+			You are a precise transaction finder. 
+			You must return only string the RAW SQL query to solve the natural-language query from user input.
+			
             You have knowledge about DDL the database: 
+
             TABLE `transaction` (
                 `id` int NOT NULL AUTO_INCREMENT,
                 `user_id` varchar(255) NOT NULL,
@@ -100,30 +106,43 @@ class FindTransactionTool(Tool):
                 `type` enum('expense','income') DEFAULT NULL,
                 PRIMARY KEY (`id`)
             )
-            """
+			Rules:
+			1. Generate a PostgreSQL compatible SQL query to find transactions based on the user's natural language query.
+			2. Always include a filter for user_id in the query to ensure data is scoped to the specific user.
+			3. Return only string the RAW SQL query without any other text or formatting or wrapping.
 			"""
-            Example: 
-            "SELECT * FROM transaction WHERE user_id = '123' AND date = '2023-01-01'"
-            "Select * from transaction where user_id = '123' order by amount desc limit 1"
-            "select * from transaction where user_id = '123' and description like '%food%' order by date desc"
-            """
-			"Return only string the RAW SQL query without any other text or formatting"
-		)
 
 		# 2) Call the LLM
 		llm_service = get_llm_service()
 		resp = llm_service.query_execute(
 			messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": query}],
 		)
-		transactions = self.repository.findRaw(resp)
+		if not resp:
+			return "No response from LLM, please try again"
+		
+		raw_query = self.validate_query_raw_sql(resp)
+		print(f"Raw SQL Query: {raw_query}")
+		transactions = self.repository.findRaw(raw_query)
 		return f"{transactions}"
 
 	def get_args_schema(self):
-		return [{"name": "query", "type": "string", "description": "Natural-language query"}]
+		return [{"name": "query", "type": "string", "description": "Natural-language query"}, {"name": "user_id", "type": "str", "description": "User ID"}]
 
 	def output_schema(self):
 		return "str"
-
+	def validate_query_raw_sql(self, query: str) -> str:
+		# This method can be used to validate the raw SQL query if needed
+		if not query.strip().lower().startswith("select"):
+			return "Query must start with SELECT"
+		if "user_id" not in query:
+			return "Query must contain user_id filter"
+		
+		if query.startswith('"') and query.endswith('"'):
+			query = query[1:-1]
+		elif query.startswith("'") and query.endswith("'"):
+			query = query[1:-1]
+		
+		return query
 
 class UpdateTransactionTool(Tool):
 	def __init__(self) -> None:
