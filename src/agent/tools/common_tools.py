@@ -30,6 +30,7 @@ class GetDateTool(Tool):
 		system_prompt = (
 			"You are a precise date/time parser."
 			"Given a natural-language expression and a reference timestamp + timezone"
+			'When the clock is not specified, use the start of day time in the given timezone.'
 			'always output ONLY valid JSON with format {"datetime": "YYYY-MM-DDTHH:MM:SS±HH:MM"}.'
 			"don't output anything else."
 		)
@@ -38,7 +39,6 @@ class GetDateTool(Tool):
 		# 2) Call the LLM
 		llm_service = get_llm_service()
 		resp = llm_service.query_execute(messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}], max_token=200)
-
 		return resp
 
 	def get_args_schema(self):

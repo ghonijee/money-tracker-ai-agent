@@ -1,5 +1,4 @@
 .env
-alembic.ini
 **/__pycache__/
 __pycache__/
 **/*.py[cod]
@@ -15,3 +14,4 @@ __pycache__/
 # deep .DS_Store
 **/.DS_Store    
 # macOS
+alembic/versions/__pycache__/**.pyc

@@ -49,8 +49,8 @@ class TransactionRepository:
 		else:
 			raise Exception("Transaction not found")
 
-	def delete(self, id):
-		transaction = self.session.query(TransactionModel).filter_by(id=id).first()
+	def delete(self, id, user_id):
+		transaction = self.session.query(TransactionModel).filter_by(id=id, user_id=user_id).first()
 		if transaction:
 			self.session.delete(transaction)
 			self.session.commit()

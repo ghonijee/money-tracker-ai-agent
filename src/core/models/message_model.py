@@ -60,3 +60,18 @@ class MessageModel:
 		Image File Path: {self.image_file_path} 
 		Source: {self.source}
 		"""
+	def to_dict(self):
+		"""
+		Convert the MessageModel to a dictionary.
+		:return: A dictionary representation of the MessageModel.
+		"""
+		return {
+			"user_id": self.user_id,
+			"sender_phone_number": self.sender_phone_number,
+			"sender_name": self.sender_name,
+			"message_type": self.message_type,
+			"message_content": self.message_content,
+			"image_public_url": self.image_public_url,
+			"image_file_path": self.image_file_path,
+			"source": self.source
+		}

@@ -13,6 +13,24 @@ class CreateTransactionTool(Tool):
 
 	def description(self) -> str:
 		return "Create a new transaction data"
+	
+	def validate_args(self, args):
+		required_keys = ["user_id", "date", "amount", "description", "category", "type"]
+		for key in required_keys:
+			if key not in args:
+				raise ValueError(f"Missing required argument: {key}")
+			if key == "user_id" and not isinstance(args[key], str):
+				raise ValueError("User ID must be a string")
+			if key == "date" and not isinstance(args[key], str):
+				raise ValueError("Date must be a string")
+			if key == "amount" and not isinstance(args[key], (int, float)):
+				raise ValueError("Amount must be a number")
+			if key == "type" and args[key] not in ["expense", "income"]:
+				raise ValueError("Type must be either 'expense' or 'income'")
+			if key == "category" and not isinstance(args[key], str):
+				raise ValueError("Category must be a string")
+			if key == "description" and not isinstance(args[key], str):
+				raise ValueError("Description must be a string")
 
 	def run(self, args: list):
 		createData = []
@@ -24,6 +42,11 @@ class CreateTransactionTool(Tool):
 			return "Args list cannot be empty"
 
 		for arg in args:
+			# Validate each argument in the list
+			if not isinstance(arg, dict):
+				return "Each argument in the list should be a dictionary"
+			self.validate_args(arg)
+			# Create a transaction schema for each argument
 			createData.append(CreateTransactionSchema(user_id=arg["user_id"], date=arg["date"], amount=arg["amount"], description=arg["description"], category=arg["category"], type=arg["type"]))
 
 		self.repository.create(createData)
@@ -134,17 +157,18 @@ class FindTransactionTool(Tool):
 
 	def output_schema(self):
 		return "str"
+	
 	def validate_query_raw_sql(self, query: str) -> str:
+		if query.startswith('"') and query.endswith('"'):
+			query = query[1:-1]
+		elif query.startswith("'") and query.endswith("'"):
+			query = query[1:-1]
 		# This method can be used to validate the raw SQL query if needed
 		if not query.strip().lower().startswith("select"):
 			return "Query must start with SELECT"
 		if "user_id" not in query:
 			return "Query must contain user_id filter"
 		
-		if query.startswith('"') and query.endswith('"'):
-			query = query[1:-1]
-		elif query.startswith("'") and query.endswith("'"):
-			query = query[1:-1]
 		
 		return query
 
@@ -157,8 +181,25 @@ class UpdateTransactionTool(Tool):
 
 	def description(self) -> str:
 		return "Update a transaction data by given ID and new values"
+	
+	def validate_args(self, args):
+		required_keys = ["id", "user_id", "date", "amount", "description", "category", "type"]
+		for key in required_keys:
+			if key not in args:
+				raise ValueError(f"Missing required argument: {key}")
+			if key == "id" and not isinstance(args[key], int):
+				raise ValueError("ID must be an integer")
+			if key == "amount" and not isinstance(args[key], (int, float)):
+				raise ValueError("Amount must be a number")
+			if key == "type" and args[key] not in ["expense", "income"]:
+				raise ValueError("Type must be either 'expense' or 'income'")
+
+			
 
 	def run(self, args):
+		# Validate the arguments
+		self.validate_args(args)
+
 		id = args["id"]
 		updateData = UpdateTransactionSchema(id=id, user_id=args["user_id"], date=args["date"], amount=args["amount"], description=args["description"], category=args["category"], type=args["type"])
 		transaction = self.repository.update(updateData)
@@ -187,15 +228,18 @@ class DeleteTransactionTool(Tool):
 		return "delete_transaction"
 
 	def description(self) -> str:
-		return "Delete a transaction data by given ID"
+		return "Delete a transaction data by given ID and user_id"
 
 	def run(self, args):
 		id = args["id"]
-		transaction = self.repository.delete(id)
+		user_id = args["user_id"]
+		if not isinstance(id, int) or not isinstance(user_id, str):
+			return "ID must be an integer and user_id must be a string"
+		transaction = self.repository.delete(id, user_id)
 		return f"{transaction.type} record successfully deleted with ID {transaction.id} for {transaction.amount} amount and {transaction.category} category"
 
 	def get_args_schema(self):
-		return [{"name": "id", "type": "int", "description": "ID of the transaction to delete"}]
+		return [{"name": "id", "type": "int", "description": "ID of the transaction to delete"}, {"name": "user_id", "type": "str", "description": "User ID"}]
 
 	def output_schema(self):
 		return "str"
