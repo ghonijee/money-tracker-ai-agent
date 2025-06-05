@@ -3,7 +3,6 @@ import hashlib
 import hmac
 from mimetypes import guess_type
 import os
-import sys
 
 from dotenv import load_dotenv
 from src.core.interfaces.tool import Tool

@@ -1,6 +1,7 @@
-from sqlalchemy import insert, text
+from sqlalchemy import text
 from src.core.models.transaction_model import TransactionModel
 from src.core.schemas.transaction_schema import CreateTransactionSchema, UpdateTransactionSchema
+from src.core.interfaces.transaction_repository_interface import ITransactionRepository
 from src.database.connection import SessionLocal
 
 
@@ -8,7 +9,7 @@ def get_transaction_repository():
 	return TransactionRepository(SessionLocal())
 
 
-class TransactionRepository:
+class TransactionRepository(ITransactionRepository):
 	def __init__(self, session):
 		self.session = session
 
