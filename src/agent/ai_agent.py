@@ -21,7 +21,6 @@ from src.services.utils import extract_json_from_string
 
 def get_agent(llm_service: LLMService = Depends(get_llm_service)):
 	agent = Agent(llm_service)
-	agent.add_tool(GreetTool())
 	return agent
 
 
@@ -53,7 +52,6 @@ class Agent:
 
 		template = yaml.safe_load(open("src/agent/prompt/system_prompt.yaml", "r"))
 		self.prompt = Template(template["system_prompt"]["v4"]).render(tools_description=tools_description, user_memory=self.user_memory)
-		print(self.prompt)
 		self.messages.append({"role": "system", "content": self.prompt})
 
 	def add_tool(self, tool):
