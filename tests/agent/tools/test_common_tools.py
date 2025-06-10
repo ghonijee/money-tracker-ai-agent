@@ -6,7 +6,6 @@ from cryptography.fernet import Fernet
 
 from src.agent.tools.common_tools import GetUserIdTool
 import json
-from unittest.mock import MagicMock, patch
 from src.agent.tools.common_tools import GetDateTool
 # adjust this import to point at where your class is defined
 

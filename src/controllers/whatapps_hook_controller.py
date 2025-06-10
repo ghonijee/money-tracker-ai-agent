@@ -1,11 +1,9 @@
 import os
-from unittest import result
 from fastapi import Depends, routing
 from fastapi import HTTPException, Query, Response, Request
 from heyoo import WhatsApp
 
 from src.agent.ai_agent import Agent, get_agent
-from src.services.utils import create_encrypted_user_id
 from src.services.webhook_message_service import WebhookMessageService, get_webhook_message_service
 from fastapi.concurrency import run_in_threadpool
 import asyncio

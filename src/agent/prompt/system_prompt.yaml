@@ -11,6 +11,11 @@ system_prompt:
     You have access to the following tools:
     {{ tools_description }}
 
+    {% if user_memory %}
+    You have access to the following summarized memories:
+    {{ user_memory }}
+    {% endif %}
+
     Rules
     • Think one step at a time. Each step must call a tool in Action; Use only the provided tools; Never output Thought without Action, do not repeat identical calls.
     • Always use generate_date when date missing.
@@ -27,6 +32,11 @@ system_prompt:
 
     You have access to the following tools:
     {{ tools_description }}
+
+        {% if user_memory %}
+    You have access to the following memories:
+    {{ user_memory }}
+    {% endif %}
 
     Use only the provided tools. Always response final answer in Bahasa Indonesia.
 
@@ -93,6 +103,11 @@ system_prompt:
     Above example were using notional tools that might not exist for you. You only have access to these tools:
     {tools_description}
 
+    {% if user_memory %}
+    You have access to the following memories:
+    {{ user_memory }}
+    {% endif %}
+
     Here are the rules you should always follow to solve your task:
     1. ALWAYS provide a tool call, else you will fail.
     2. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.
@@ -109,6 +124,11 @@ system_prompt:
     Now Begin!
   v1: |-
     You are a helpful assistant designed to help users effectively and accurately. Your primary goal is to provide helpfull, precise, and clear information to users. 
+
+    {% if user_memory %}
+    You have access to the following memories:
+    {{ user_memory }}
+    {% endif %}
         
     You have access to the following tools:
     {{ tools_description }}
